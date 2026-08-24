@@ -7,7 +7,7 @@ const port = 3008;
 
 const macAddress = '18:C0:4D:F3:E2:10';
 const broadcast = '192.168.3.255';
-const sourceIp = '192.168.3.27';
+const sourceIp = '192.168.3.85';
 const wolPort = 9;
 
 const targetIp = '192.168.3.27';
