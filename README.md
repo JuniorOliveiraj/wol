@@ -25,10 +25,9 @@ Edite as constantes no topo de [index.js](index.js):
 | `sourceIp` | IP da máquina que está rodando este servidor |
 | `wolPort` | Porta usada para o pacote WOL (padrão `9`) |
 | `targetIp` | **IP do PC alvo** — usado para checar se ele está ligado |
-| `rdpPort` | Porta usada para checar se o PC está ligado (padrão RDP `3389`) |
 | `bootingTimeoutMs` | Tempo (ms) que o status fica em `ligando` após o `/wake` |
 
-> ⚠️ `targetIp` precisa ser preenchido com o IP real do PC alvo antes de usar a rota `/status`.
+> ⚠️ O `sourceIp` deve ser o IP da máquina onde o `index.js` está rodando (não o do PC alvo), e o `targetIp` deve ser o IP do PC que você liga com Wake-on-LAN.
 
 ## Executando
 
@@ -62,9 +61,11 @@ curl http://localhost:3008/status
 
 Como funciona:
 
-- Tenta abrir uma conexão TCP na porta `rdpPort` (RDP, por padrão) do PC alvo, com timeout de 2s.
-  - Conectou → `"ligado"`
-  - Não conectou, mas o `/wake` foi chamado há menos de `bootingTimeoutMs` → `"ligando"`
-  - Não conectou e fora da janela de boot → `"desligado"`
+- Envia um ping (ICMP) para o `targetIp`, com timeout de 2s.
+  - Respondeu → `"ligado"`
+  - Não respondeu, mas o `/wake` foi chamado há menos de `bootingTimeoutMs` → `"ligando"`
+  - Não respondeu e fora da janela de boot → `"desligado"`
 
-A porta RDP é usada como sinal de "ligado" porque o serviço de RDP normalmente fica escutando mesmo sem uma sessão remota ativa, sendo mais confiável que ping ICMP (que costuma ser bloqueado por firewall).
+> Nota: a checagem via ping (`ping -c 1 -W 2`) usa a sintaxe do Linux/Android (Termux). Se o servidor rodar no Windows, troque para `ping -n 1 -w 2000 <ip>` em [index.js](index.js).
+
+Foi optado por ping em vez de checar a porta RDP (3389) porque o Windows Home não aceita conexões RDP como servidor — só Pro/Enterprise/Education têm esse recurso.

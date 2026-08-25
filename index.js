@@ -1,6 +1,6 @@
 const express = require('express');
 const wol = require('wake_on_lan');
-const net = require('net');
+const { exec } = require('child_process');
 
 const app = express();
 const port = 3008;
@@ -11,23 +11,16 @@ const sourceIp = '192.168.3.85';
 const wolPort = 9;
 
 const targetIp = '192.168.3.27';
-const rdpPort = 3389;
 const bootingTimeoutMs = 90 * 1000; // tempo maximo considerado "ligando" apos o wake
 
 let bootingUntil = null;
 
-function checkRdpPort() {
+function checkHostAlive() {
     return new Promise((resolve) => {
-        const socket = new net.Socket();
-        const onDone = (isUp) => {
-            socket.destroy();
-            resolve(isUp);
-        };
-        socket.setTimeout(2000);
-        socket.once('connect', () => onDone(true));
-        socket.once('timeout', () => onDone(false));
-        socket.once('error', () => onDone(false));
-        socket.connect(rdpPort, targetIp);
+        // -c 1 -W 2: envia 1 pacote ICMP e espera ate 2s pela resposta (sintaxe Linux/Android/Termux)
+        exec(`ping -c 1 -W 2 ${targetIp}`, (err) => {
+            resolve(!err);
+        });
     });
 }
 
@@ -46,9 +39,9 @@ app.get('/wake', (req, res) => {
 
 // Rota de status: ligado, ligando ou desligado
 app.get('/status', async (req, res) => {
-    const rdpUp = await checkRdpPort();
+    const hostUp = await checkHostAlive();
 
-    if (rdpUp) {
+    if (hostUp) {
         bootingUntil = null;
         return res.json({ status: 'ligado' });
     }
