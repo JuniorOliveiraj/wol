@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>wol</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=block">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="shell">
+
+        <!-- Login -->
+        <section id="login" class="view" hidden>
+            <div class="brand">
+                <span class="icon brand-icon">power_settings_new</span>
+                <span class="brand-name">wol</span>
+            </div>
+
+            <form id="login-form" class="login-form" autocomplete="on">
+                <label class="field">
+                    <span class="icon">lock</span>
+                    <input id="password" name="password" type="password" placeholder="Senha"
+                           autocomplete="current-password" required>
+                </label>
+                <button type="submit" class="pill primary" id="login-btn">Entrar</button>
+            </form>
+        </section>
+
+        <!-- Home -->
+        <section id="home" class="view" hidden>
+            <header class="topbar">
+                <div class="status" id="status" data-status="desconhecido">
+                    <span class="dot"></span>
+                    <span class="status-text" id="status-text">verificando…</span>
+                </div>
+                <button class="icon-btn" id="logout-btn" title="Sair" aria-label="Sair">
+                    <span class="icon">logout</span>
+                </button>
+            </header>
+
+            <div class="choices">
+                <button class="os-card" data-target="windows" style="--accent: var(--windows)">
+                    <span class="os-icon"><span class="icon">sports_esports</span></span>
+                    <span class="os-text">
+                        <span class="os-name">Windows</span>
+                        <span class="os-sub">jogos</span>
+                    </span>
+                    <span class="icon os-arrow">arrow_forward</span>
+                </button>
+
+                <button class="os-card" data-target="linux" style="--accent: var(--linux)">
+                    <span class="os-icon"><span class="icon">terminal</span></span>
+                    <span class="os-text">
+                        <span class="os-name">CachyOS</span>
+                        <span class="os-sub">trabalho</span>
+                    </span>
+                    <span class="icon os-arrow">arrow_forward</span>
+                </button>
+            </div>
+
+            <p class="next-boot">Próximo boot: <strong id="next-boot">—</strong></p>
+        </section>
+
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

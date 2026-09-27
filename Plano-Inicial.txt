@@ -1,0 +1,247 @@
+Regra — Boot remoto do PC via Wake on LAN + GRUB
+Objetivo
+
+O servidor Node.js fica ligado 24/7 e funciona como controlador remoto do PC principal.
+
+O PC possui dual boot:
+
+Windows → usado principalmente para jogos
+CachyOS/Linux → usado principalmente para trabalho
+GRUB → gerenciador de boot
+Wake on LAN → responsável por ligar o PC remotamente
+
+A ideia é permitir escolher remotamente qual sistema operacional será iniciado antes de enviar o Wake on LAN.
+
+Rotas da API
+
+A API deverá possuir duas rotas principais:
+
+GET /pc/boot/windows
+
+e
+
+GET /pc/boot/linux
+/pc/boot/windows
+
+Fluxo:
+
+Requisição
+   ↓
+Validar acesso
+   ↓
+Configurar Windows como próximo boot do GRUB
+   ↓
+Confirmar configuração
+   ↓
+Enviar Wake on LAN
+   ↓
+PC liga
+   ↓
+GRUB inicia Windows
+/pc/boot/linux
+
+Fluxo:
+
+Requisição
+   ↓
+Validar acesso
+   ↓
+Configurar CachyOS como próximo boot do GRUB
+   ↓
+Confirmar configuração
+   ↓
+Enviar Wake on LAN
+   ↓
+PC liga
+   ↓
+GRUB inicia CachyOS
+Regra principal
+
+A escolha do sistema operacional deve acontecer antes do Wake on LAN.
+
+Nunca fazer:
+
+Wake on LAN
+↓
+PC liga
+↓
+Tentar escolher o sistema
+
+O correto é:
+
+Escolher sistema
+↓
+Configurar próximo boot
+↓
+Confirmar configuração
+↓
+Wake on LAN
+↓
+PC liga
+↓
+GRUB inicia o sistema escolhido
+Próximo boot
+
+Preferencialmente, a API deve configurar o próximo boot, e não alterar permanentemente o sistema padrão do GRUB.
+
+Exemplo:
+
+Padrão do GRUB:
+Windows
+
+Usuário solicita:
+
+GET /pc/boot/linux
+
+Então:
+
+Próximo boot → CachyOS
+
+Depois disso, a configuração padrão pode continuar sendo:
+
+Windows
+
+Isso evita ficar alterando permanentemente o comportamento padrão do GRUB.
+
+Arquitetura
+                  INTERNET / LAN / VPN
+                         │
+                         ▼
+                ┌─────────────────┐
+                │     Celular     │
+                │                 │
+                │ [ Windows ]     │
+                │ [ CachyOS ]     │
+                └────────┬────────┘
+                         │
+                         │ HTTP
+                         ▼
+                ┌─────────────────┐
+                │ Servidor Node   │
+                │      24/7       │
+                │                 │
+                │ /pc/boot/       │
+                │   windows       │
+                │   linux         │
+                │                 │
+                │ Wake on LAN     │
+                └────────┬────────┘
+                         │
+                         │ Magic Packet
+                         ▼
+                ┌─────────────────┐
+                │       PC        │
+                │                 │
+                │      GRUB       │
+                │      /   \      │
+                │     /     \     │
+                │ Windows CachyOS │
+                └─────────────────┘
+Regra de segurança
+
+As rotas não devem ficar abertas sem autenticação.
+
+Exemplo:
+
+POST /pc/boot/linux
+Authorization: Bearer TOKEN
+
+ou outro mecanismo equivalente.
+
+A API deve:
+
+Validar autenticação.
+Validar o sistema solicitado.
+Configurar o próximo boot.
+Confirmar que a configuração funcionou.
+Somente então enviar o Wake on LAN.
+
+Se a configuração do boot falhar:
+
+NÃO enviar Wake on LAN.
+Respostas da API
+
+Sucesso:
+
+{
+  "success": true,
+  "target": "linux",
+  "message": "Próximo boot configurado para CachyOS. Wake on LAN enviado."
+}
+
+Windows:
+
+{
+  "success": true,
+  "target": "windows",
+  "message": "Próximo boot configurado para Windows. Wake on LAN enviado."
+}
+
+Erro:
+
+{
+  "success": false,
+  "target": "linux",
+  "message": "Não foi possível configurar o próximo boot. Wake on LAN não enviado."
+}
+Ponto técnico importante
+
+O servidor Node.js está em outra máquina.
+
+Portanto, se o PC estiver completamente desligado, o servidor não consegue simplesmente executar um comando do GRUB nele.
+
+É necessário existir algum mecanismo para preparar o próximo boot enquanto o PC ainda está ligado, ou algum mecanismo externo capaz de alterar essa configuração enquanto ele está desligado.
+
+Uma solução possível é:
+
+PC ligado
+   ↓
+Servidor informa qual será o próximo boot
+   ↓
+PC grava essa informação
+   ↓
+PC pode ser desligado
+   ↓
+Servidor envia Wake on LAN
+   ↓
+PC liga
+   ↓
+GRUB utiliza a configuração previamente gravada
+
+Essa é a parte que precisamos definir tecnicamente na implementação.
+
+Objetivo final
+
+A experiência desejada é basicamente:
+
+             ┌──────────────┐
+             │     PC       │
+             │  DESLIGADO   │
+             └──────┬───────┘
+                    │
+                    │
+              Celular / API
+                    │
+             ┌──────┴───────┐
+             │              │
+             ▼              ▼
+        [ Windows ]    [ CachyOS ]
+             │              │
+             └──────┬───────┘
+                    ▼
+             Configura GRUB
+                    │
+                    ▼
+              Wake on LAN
+                    │
+                    ▼
+                 PC liga
+                    │
+                    ▼
+                  GRUB
+                    │
+             ┌──────┴──────┐
+             ▼             ▼
+          Windows       CachyOS
+
+Em resumo: o servidor Node 24/7 vira um "controle remoto de boot": você escolhe Windows ou CachyOS, ele prepara o próximo boot e depois manda o Wake on LAN para ligar o computador.

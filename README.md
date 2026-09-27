@@ -1,6 +1,8 @@
 # wol
 
-Servidor Node.js simples para ligar um PC remotamente via Wake-on-LAN e consultar o status dele (ligado, ligando ou desligado).
+Servidor Node.js para ligar um PC remotamente via Wake-on-LAN, escolher o sistema do próximo boot (Windows ou CachyOS, via GRUB) e consultar o status dele (ligado, ligando ou desligado).
+
+Planejamento completo em [doc/](doc/README.md).
 
 ## Requisitos
 
@@ -16,7 +18,7 @@ npm install
 
 ## Configuração
 
-Edite as constantes no topo de [index.js](index.js):
+Edite os valores em [lib/config.js](lib/config.js) (ou use as variáveis de ambiente indicadas lá — `PORT`, `MAC_ADDRESS`, `BROADCAST`, `SOURCE_IP`, `TARGET_IP`, `WOL_TOKEN`, `GRUB_ID_WINDOWS`, `GRUB_ID_LINUX`, `STATE_FILE`):
 
 | Constante | Descrição |
 | --- | --- |
@@ -26,6 +28,8 @@ Edite as constantes no topo de [index.js](index.js):
 | `wolPort` | Porta usada para o pacote WOL (padrão `9`) |
 | `targetIp` | **IP do PC alvo** — usado para checar se ele está ligado |
 | `bootingTimeoutMs` | Tempo (ms) que o status fica em `ligando` após o `/wake` |
+| `uiPassword` | Senha da interface web |
+| `grubIds` | IDs das `menuentry` do GRUB para `windows` e `linux` |
 
 > ⚠️ O `sourceIp` deve ser o IP da máquina onde o `index.js` está rodando (não o do PC alvo), e o `targetIp` deve ser o IP do PC que você liga com Wake-on-LAN.
 
@@ -35,13 +39,25 @@ Edite as constantes no topo de [index.js](index.js):
 npm start
 ```
 
-O servidor sobe em `http://localhost:3008`.
+O servidor sobe em `http://localhost:3008`. Abrindo essa URL no navegador aparece a interface web (pede a senha).
 
 ## Rotas
 
-### `GET /wake`
+### `GET /` — interface web
 
-Envia o pacote mágico Wake-on-LAN para o PC alvo.
+Tela preta com dois botões (Windows / CachyOS) e o status do PC. Exige senha (`POST /login`); a sessão dura 30 dias.
+
+### `POST /pc/boot/:target`
+
+`target` = `windows` ou `linux`. Exige sessão da interface ou `Authorization: Bearer <WOL_TOKEN>`. Grava o próximo boot, confirma a gravação e só então envia o Wake-on-LAN. Detalhes em [doc/03-api.md](doc/03-api.md).
+
+### `GET /grub/next.cfg`
+
+Lida pelo GRUB durante o boot (aceita só o IP do PC). Configuração do GRUB em [doc/04-configuracao-grub.md](doc/04-configuracao-grub.md).
+
+### `GET /wake` (legada)
+
+Envia o pacote mágico Wake-on-LAN para o PC alvo. Sempre inicia o sistema padrão do GRUB (Windows).
 
 ```bash
 curl http://localhost:3008/wake
@@ -56,8 +72,10 @@ curl http://localhost:3008/status
 ```
 
 ```json
-{ "status": "ligado" }
+{ "status": "ligado", "nextBoot": null }
 ```
+
+`nextBoot` indica uma escolha de sistema ainda não usada pelo GRUB (`"windows"`, `"linux"` ou `null`).
 
 Como funciona:
 
